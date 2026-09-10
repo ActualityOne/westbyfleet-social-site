@@ -47,3 +47,26 @@ var WBSC_CATEGORY_LABELS = {
   'special-night': 'Special Night',
   'other': 'Event'
 };
+
+function wbscStars(rating) {
+  var full = '★'.repeat(rating);
+  var empty = '☆'.repeat(5 - rating);
+  return '<span aria-label="' + rating + ' out of 5 stars" style="color:var(--gold);letter-spacing:2px;">' + full + empty + '</span>';
+}
+
+async function wbscFetchApprovedReviews(limit) {
+  var client = wbscGetClient();
+  if (!client) return [];
+  var query = client
+    .from('reviews')
+    .select('*')
+    .eq('is_approved', true)
+    .order('created_at', { ascending: false });
+  if (limit) query = query.limit(limit);
+  var res = await query;
+  if (res.error) {
+    console.error('Could not load reviews:', res.error.message);
+    return [];
+  }
+  return res.data || [];
+}

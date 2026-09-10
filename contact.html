@@ -47,6 +47,7 @@
         </div>
       </div>
       <a href="/gallery.html">Gallery</a>
+      <a href="/reviews.html">Reviews</a>
       <a href="/about.html">About</a>
       <a href="/contact.html">Contact</a>
     </nav>
@@ -70,14 +71,7 @@
         <h2>Send an Enquiry</h2>
         <p>Pick what you're enquiring about and tell us a little detail. Event enquiries go straight to the same team who look after our diary, so we can come back to you with real availability.</p>
 
-        <!--
-          Form action: replace YOUR_FORM_ID with a Formspree endpoint
-          (https://formspree.io) configured to deliver to
-          secretary@westbyfleetsocial.com, the club's existing contact
-          address for events and general enquiries. See README.md for
-          full setup steps.
-        -->
-        <form class="enquiry" data-enquiry-form action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+        <form id="enquiry-form" class="enquiry">
           <div class="form-row-2">
             <div>
               <label for="name">Full name</label>
@@ -123,11 +117,13 @@
             <textarea id="message" name="message" rows="5" required></textarea>
           </div>
 
-          <p class="hp-field"><label>Leave this field empty<input type="text" name="_gotcha" tabindex="-1" autocomplete="off"></label></p>
+          <p class="hp-field"><label>Leave this field empty<input type="text" id="hp-website" tabindex="-1" autocomplete="off"></label></p>
+
+          <div id="enquiry-status"></div>
 
           <div>
-            <button type="submit" class="btn btn-solid">Send Enquiry</button>
-            <p class="form-note">This form delivers straight to our events and membership inbox. We aim to reply within a couple of days.</p>
+            <button type="submit" id="enquiry-submit" class="btn btn-solid">Send Enquiry</button>
+            <p class="form-note">This form goes straight into our events and membership inbox. We aim to reply within a couple of days.</p>
           </div>
         </form>
       </div>
@@ -168,6 +164,7 @@
           <li><a href="/whats-on.html">What's On</a></li>
           <li><a href="/venue-hire/">Venue Hire</a></li>
           <li><a href="/gallery.html">Gallery</a></li>
+          <li><a href="/reviews.html">Reviews</a></li>
           <li><a href="/useful-links.html">Useful Links</a></li>
         </ul>
       </div>
@@ -208,6 +205,50 @@
 
 <script src="js/main.js"></script>
 <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="js/supabase-config.js"></script>
+<script src="js/events.js"></script>
+<script>
+document.getElementById('enquiry-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  var statusEl = document.getElementById('enquiry-status');
+  var submitBtn = document.getElementById('enquiry-submit');
+
+  if (document.getElementById('hp-website').value) return; // honeypot
+
+  var client = wbscGetClient();
+  if (!client) {
+    statusEl.innerHTML = '<div class="status-msg" style="color:#a44;">Sorry, the enquiry form isn\'t available right now. Please email <a href="mailto:secretary@westbyfleetsocial.com">secretary@westbyfleetsocial.com</a> or call 01932 346240 instead.</div>';
+    return;
+  }
+
+  var payload = {
+    name: document.getElementById('name').value,
+    email: document.getElementById('email').value,
+    phone: document.getElementById('phone').value || null,
+    reason: document.getElementById('reason').value,
+    event_date: document.getElementById('event-date').value || null,
+    guests: document.getElementById('guests').value ? parseInt(document.getElementById('guests').value, 10) : null,
+    message: document.getElementById('message').value
+  };
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Sending...';
+
+  var { error } = await client.from('enquiries').insert(payload);
+
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'Send Enquiry';
+
+  if (error) {
+    statusEl.innerHTML = '<div style="color:#a44;">Something went wrong sending that. Please try again, or email <a href="mailto:secretary@westbyfleetsocial.com">secretary@westbyfleetsocial.com</a> directly.</div>';
+    console.error(error);
+  } else {
+    document.getElementById('enquiry-form').reset();
+    statusEl.innerHTML = '<div style="color:var(--gold-deep); font-weight:600;">Thanks, your enquiry has been sent. We aim to reply within a couple of days.</div>';
+  }
+});
+</script>
 <script src="js/cookie-consent.js"></script>
 </body>
 </html>

@@ -13,8 +13,9 @@ Static HTML/CSS/JS, no build step, no framework. That's deliberate: it keeps loa
 - `robots.txt` explicitly welcomes AI crawlers (GPTBot, ClaudeBot, PerplexityBot, Google-Extended, Applebot-Extended) and an `llms.txt` gives AI assistants a plain-language summary of the site.
 - `sitemap.xml`, canonical tags, per-page meta descriptions and Open Graph tags, none of which the current site has.
 - A "Useful Local Links" page linking only to non-commercial/official resources (National Rail, Woking Borough Council, Surrey libraries, NHS, Surrey Police).
-- A contact form that routes enquiries (membership or event hire) straight to the club's existing inbox.
-- An admin-only events diary (Supabase-backed) so the committee can add/edit dates without touching code, which then show up automatically on the public What's On page.
+- A contact form backed entirely by the same Supabase project (no third-party form service or account needed) — submissions land in an `enquiries` table and show up in the admin panel.
+- A **Reviews** page with a real (linked, attributed) external rating plus a self-hosted review form — submissions go into a moderation queue and only appear once an admin approves them, so it can't be spammed or gamed.
+- An admin-only dashboard (Supabase-backed) so the committee can add/edit diary dates, read enquiries, and approve/reject reviews without touching code. Diary dates and approved reviews show up automatically on the relevant public pages.
 - A cookie notice, Privacy Policy and Terms of Service, none of which the current site has.
 - Real photography sourced from the club's own public Facebook page (see "Photos" below), rather than the club's real interior sitting entirely undocumented.
 
@@ -27,8 +28,9 @@ whats-on.html                           Regular club nights + dynamic upcoming d
 food-and-drink.html                     Sunday roast, Saturday lunch, sandwiches, Friday menu
 about.html
 gallery.html                            Real photos + remaining placeholders (see "Photos" below)
+reviews.html                            External rating link + moderated review submissions
 useful-links.html                       Non-commercial local links
-contact.html                            Enquiry form
+contact.html                            Enquiry form (Supabase-backed)
 privacy-policy.html
 terms-of-service.html
 venue-hire/index.html                   Venue hire pillar page
@@ -36,40 +38,33 @@ venue-hire/birthday-parties.html
 venue-hire/weddings-and-engagements.html
 venue-hire/funerals-and-wakes.html
 venue-hire/community-and-corporate-events.html
-admin/index.html                        Committee-only events diary (noindex)
+admin/index.html                        Committee-only dashboard: diary, enquiries, review moderation (noindex)
 css/style.css
 js/main.js, js/events.js, js/supabase-config.js, js/cookie-consent.js
 supabase/migrations/0001_events_and_admins.sql
+supabase/migrations/0002_enquiries.sql
+supabase/migrations/0003_reviews.sql
 .github/workflows/supabase-keep-alive.yml
 robots.txt, sitemap.xml, llms.txt
 ```
 
-## Setup still required before this goes fully live
+## Setup status
 
-### 1. Contact form (Formspree)
+### 1. Backend (Supabase) — done
 
-The form in `contact.html` posts to a Formspree endpoint so it needs no backend:
+A Supabase project ("WestbyfleetSocial" org) is live, with `events`, `admins`, `enquiries` and `reviews` tables and row-level security applied (verified directly against the live database, including the specific gotcha that `insert().select()` requires read access too — the actual form code just does `insert()`). `js/supabase-config.js` already points at it, using the legacy anon JWT key rather than the newer `sb_publishable_...` key, which didn't resolve to the Postgres `anon` role correctly on this project when tested. An admin account (`westbyfleetadmin@craig.it`) exists and is on the `admins` allow-list, so `/admin/` is usable right now for the events diary, enquiries inbox, and review moderation.
 
-1. Create a free account at [formspree.io](https://formspree.io) and a new form.
-2. Set the form's delivery address to `secretary@westbyfleetsocial.com` (the club's existing contact address) — or a dedicated `events@` address if you'd rather split membership and event enquiries later.
-3. Copy the form ID and replace `YOUR_FORM_ID` in the `action="https://formspree.io/f/YOUR_FORM_ID"` attribute in `contact.html`.
+**Two remaining manual steps, both dashboard-only settings the Supabase MCP tools can't change:**
+1. **Authentication > Sign In / Providers**: turn **off** "Allow new users to sign up". Not done yet — right now anyone could create an account, though they still couldn't write anything without being on the `admins` allow-list, since that's enforced by row-level security independently.
+2. **Authentication > Policies (Password)**: turn **on** "leaked password protection" (checks against HaveIBeenPwned) — flagged by Supabase's own security advisor, currently off.
 
-### 2. Events diary (Supabase) — schema is already live
+Note: contact-form enquiries and new reviews currently only show up when someone checks `/admin/` — there's no outbound email alert yet. Wiring one up is a small follow-up (a Supabase Edge Function calling an email API like Resend) if you want the committee notified automatically rather than checking the dashboard.
 
-A Supabase project has been created and the migration in `supabase/migrations/0001_events_and_admins.sql` has already been applied, and `js/supabase-config.js` already points at it. Remaining steps:
+### 2. Keep the database from pausing — done
 
-1. In the Supabase dashboard, **Authentication > Providers > Email**, create the committee's admin account(s) (or invite them), then under **Authentication > Settings**, turn **off** "Allow new users to sign up" so only pre-created accounts can log in.
-2. Add each admin's email to the `admins` table, e.g. `insert into admins (email) values ('secretary@westbyfleetsocial.com');` — run this in the SQL Editor.
-3. Visit `/admin/` and sign in. Events added there appear automatically on `/whats-on.html`.
+Supabase free-tier projects pause after 7 days of no activity. `.github/workflows/supabase-keep-alive.yml` pings the database every 3 days to prevent that. The `SUPABASE_URL` and `SUPABASE_ANON_KEY` repository secrets it needs are already set on the GitHub repo.
 
-### 3. Keep the database from pausing
-
-Supabase free-tier projects pause after 7 days of no activity. `.github/workflows/supabase-keep-alive.yml` pings the database every 3 days to prevent that. Add two repository secrets (Settings > Secrets and variables > Actions), taken from the Supabase project's Settings > API page:
-
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-
-### 4. Photos
+### 3. Photos
 
 Several real photos were sourced directly from the club's own public Facebook page (`images/main-bar.jpg`, `images/snooker-room.jpg`, `images/garden.jpg`, `images/real-ales.jpg`, `images/club-exterior.jpg`, `images/logo.jpg`) since they're the club's own marketing photos being reused on the club's own new site. Two things worth checking before this goes live publicly:
 
@@ -81,7 +76,7 @@ Still-needed photos (shown as labelled placeholder boxes, "Photo needed: ..."):
 - Function room set for a party / wedding reception / wake / meeting
 - Dart boards, live band on stage
 
-### 5. Hosting
+### 4. Hosting
 
 This is plain static HTML, deployable anywhere (GitHub Pages, Netlify, Cloudflare Pages, or the club's existing host). Internal links use root-absolute paths (`/membership.html`) so it's built to sit at a domain root — if you deploy to a GitHub Pages *project* page without a custom domain (`username.github.io/repo/`), either add a custom domain (recommended, and needed to eventually replace westbyfleetsocial.com) or the links will need adjusting to relative paths.
 
@@ -89,4 +84,5 @@ This is plain static HTML, deployable anywhere (GitHub Pages, Netlify, Cloudflar
 
 - Facts used (address, phone, opening hours, menus, current promotions) are sourced from the current live site, the club's own Facebook page, and a newsletter forwarded by the club secretary; verify anything time-sensitive (event dates, prices) before publishing, since these change.
 - `venue-hire/` FAQ and page copy is original content written for this rebuild, not copied from the existing site.
+- The reviews page links to (and cites the rating from) the club's existing public UseYourLocal listing rather than reproducing individual third-party reviews verbatim, and no reviews have been fabricated for this rebuild — the review list on the page is genuinely empty until real ones are submitted and approved.
 - The Privacy Policy and Terms of Service are a genuine starting point for a UK small business/club site but haven't been reviewed by a solicitor — worth a quick check before relying on them, especially the venue hire booking/cancellation terms, which this site intentionally keeps separate from the general website terms.

@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="icon" href="images/logo.jpg">
+<link rel="icon" href="../images/logo.jpg">
 <link rel="stylesheet" href="../css/style.css">
 <style>
   .admin-wrap { max-width: 760px; margin: 0 auto; padding: 60px 24px; }
@@ -90,6 +90,14 @@
 
     <h3>Upcoming &amp; Recent Events</h3>
     <div id="events-list"></div>
+
+    <h3 style="margin-top:40px;">Enquiries</h3>
+    <p style="color:var(--text-dim); font-size:0.88rem; margin-top:-8px;">Membership and venue hire enquiries submitted through the contact form.</p>
+    <div id="enquiries-list"></div>
+
+    <h3 style="margin-top:40px;">Reviews</h3>
+    <p style="color:var(--text-dim); font-size:0.88rem; margin-top:-8px;">Approve a review to publish it on the public Reviews page, or delete it.</p>
+    <div id="reviews-list"></div>
   </div>
 </div>
 
@@ -199,6 +207,115 @@
       });
     });
   }
+
+  async function loadEnquiries() {
+    var listEl = document.getElementById('enquiries-list');
+    var { data, error } = await client
+      .from('enquiries')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      listEl.innerHTML = '<div class="status-msg error">' + error.message + '</div>';
+      return;
+    }
+    if (!data.length) {
+      listEl.innerHTML = '<p style="color:var(--text-dim);">No enquiries yet.</p>';
+      return;
+    }
+    listEl.innerHTML = '';
+    data.forEach(function (en) {
+      var when = new Date(en.created_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.style.marginBottom = '14px';
+      card.style.opacity = en.is_read ? '0.6' : '1';
+      card.innerHTML =
+        '<div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap;">' +
+          '<h3 style="margin-bottom:4px;">' + en.name.replace(/</g, '&lt;') + ' &middot; ' + en.reason.replace(/</g, '&lt;') + '</h3>' +
+          '<span class="meta" style="color:var(--text-dim); font-size:0.8rem; white-space:nowrap;">' + when + '</span>' +
+        '</div>' +
+        '<p style="margin:4px 0;"><a href="mailto:' + encodeURIComponent(en.email) + '">' + en.email.replace(/</g, '&lt;') + '</a>' +
+          (en.phone ? ' &middot; ' + en.phone.replace(/</g, '&lt;') : '') +
+          (en.event_date ? ' &middot; event date: ' + en.event_date : '') +
+          (en.guests ? ' &middot; ~' + en.guests + ' guests' : '') +
+        '</p>' +
+        '<p style="white-space:pre-wrap;">' + en.message.replace(/</g, '&lt;') + '</p>' +
+        '<div class="actions" style="display:flex; gap:10px;">' +
+          '<button class="btn btn-sm" data-toggle-read="' + en.id + '" data-current="' + en.is_read + '">' + (en.is_read ? 'Mark unread' : 'Mark read') + '</button>' +
+          '<button class="btn btn-sm" data-delete-enquiry="' + en.id + '">Delete</button>' +
+        '</div>';
+      listEl.appendChild(card);
+    });
+    listEl.querySelectorAll('[data-toggle-read]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var isRead = btn.getAttribute('data-current') === 'true';
+        await client.from('enquiries').update({ is_read: !isRead }).eq('id', btn.getAttribute('data-toggle-read'));
+        loadEnquiries();
+      });
+    });
+    listEl.querySelectorAll('[data-delete-enquiry]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        if (!confirm('Delete this enquiry?')) return;
+        await client.from('enquiries').delete().eq('id', btn.getAttribute('data-delete-enquiry'));
+        loadEnquiries();
+      });
+    });
+  }
+
+  async function loadReviews() {
+    var listEl = document.getElementById('reviews-list');
+    var { data, error } = await client
+      .from('reviews')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      listEl.innerHTML = '<div class="status-msg error">' + error.message + '</div>';
+      return;
+    }
+    if (!data.length) {
+      listEl.innerHTML = '<p style="color:var(--text-dim);">No reviews yet.</p>';
+      return;
+    }
+    listEl.innerHTML = '';
+    data.forEach(function (rv) {
+      var when = new Date(rv.created_at).toLocaleDateString('en-GB', { dateStyle: 'medium' });
+      var card = document.createElement('div');
+      card.className = 'card';
+      card.style.marginBottom = '14px';
+      card.style.opacity = rv.is_approved ? '1' : '0.85';
+      card.innerHTML =
+        wbscStars(rv.rating) +
+        (rv.is_approved ? ' <span style="color:var(--gold-deep); font-size:0.8rem; font-weight:600;">PUBLISHED</span>' : ' <span style="color:var(--text-dim); font-size:0.8rem;">PENDING</span>') +
+        '<p style="margin:8px 0;">' + rv.comment.replace(/</g, '&lt;') + '</p>' +
+        '<p style="color:var(--text-dim); font-size:0.85rem; margin-bottom:12px;">' + rv.name.replace(/</g, '&lt;') + ', ' + when + '</p>' +
+        '<div class="actions" style="display:flex; gap:10px;">' +
+          '<button class="btn btn-sm" data-toggle-approve="' + rv.id + '" data-current="' + rv.is_approved + '">' + (rv.is_approved ? 'Unpublish' : 'Approve') + '</button>' +
+          '<button class="btn btn-sm" data-delete-review="' + rv.id + '">Delete</button>' +
+        '</div>';
+      listEl.appendChild(card);
+    });
+    listEl.querySelectorAll('[data-toggle-approve]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        var isApproved = btn.getAttribute('data-current') === 'true';
+        await client.from('reviews').update({ is_approved: !isApproved }).eq('id', btn.getAttribute('data-toggle-approve'));
+        loadReviews();
+      });
+    });
+    listEl.querySelectorAll('[data-delete-review]').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        if (!confirm('Delete this review?')) return;
+        await client.from('reviews').delete().eq('id', btn.getAttribute('data-delete-review'));
+        loadReviews();
+      });
+    });
+  }
+
+  var _loadEventsOriginal = loadEvents;
+  loadEvents = function () {
+    _loadEventsOriginal();
+    loadEnquiries();
+    loadReviews();
+  };
 
   refreshSession();
 })();

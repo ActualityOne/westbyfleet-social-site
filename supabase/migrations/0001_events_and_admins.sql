@@ -53,12 +53,15 @@ create policy "Admins can delete events"
 -- with from the client.
 
 create or replace function public.set_updated_at()
-returns trigger as $$
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
 begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
 drop trigger if exists events_set_updated_at on public.events;
 create trigger events_set_updated_at

@@ -3,5 +3,5 @@
 // restricted by the row-level security policies in supabase/migrations/.
 window.SUPABASE_CONFIG = {
   url: 'https://szumrcslhzkoeikszjfa.supabase.co',
-  anonKey: 'sb_publishable__W7o0j3dZW3ht_55GW4P4A_xN_8qe4O'
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN6dW1yY3NsaHprb2Vpa3N6amZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwNjY4NzUsImV4cCI6MjEwNDY0Mjg3NX0.mUBffdEWy8mS6tpAlUeeJxLD8fiBbDGssCLKJVJhyE4'
 };
