@@ -1,0 +1,27 @@
+User-agent: *
+Allow: /
+
+# Explicitly welcome AI answer-engine and assistant crawlers,
+# since visibility in AI-generated answers is a goal for this site.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://www.westbyfleetsocial.com/sitemap.xml
