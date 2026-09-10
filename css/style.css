@@ -282,7 +282,7 @@ details.faq[open] summary::before { content: "\2013 "; }
 details.faq p { margin-top: 10px; }
 
 /* Forms */
-form.enquiry { display: grid; gap: 16px; max-width: 640px; }
+form.enquiry { display: grid; gap: 16px; max-width: 640px; margin-bottom: 24px; }
 form.enquiry label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 6px; }
 form.enquiry input, form.enquiry select, form.enquiry textarea {
   width: 100%;
